@@ -16,7 +16,7 @@
 
 #define AXIS y
 
-#define DEBUG 1
+#define DEBUG 0
 
 
 
@@ -240,7 +240,7 @@ void setup(void) {
  
 
   // Try to initialize!
-  if (! lis3mdl.begin_I2C(0x1e, &Wire)) {          // hardware I2C mode, can pass in address & alt Wire
+  if (! lis3mdl.begin_I2C(deviceId, WIRE)) {          // hardware I2C mode, can pass in address & alt Wire
   //if (! lis3mdl.begin_SPI(LIS3MDL_CS)) {  // hardware SPI mode
   //if (! lis3mdl.begin_SPI(LIS3MDL_CS, LIS3MDL_CLK, LIS3MDL_MISO, LIS3MDL_MOSI)) { // soft SPI
     Serial.println("Failed to find LIS3MDL chip");
