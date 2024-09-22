@@ -16,6 +16,7 @@
 
 #define AXIS y
 
+#define DEBUG 1
 
 
 
@@ -174,11 +175,56 @@ void autoConfig() {
   flowRatePayLoad["availability_topic"] = availabilityTopic;
   flowRatePayLoad["device"] = device;   
   flowRatePayLoad["platform"] = "mqtt";
-
   String flowRateTopic = discoveryTopic; flowRateTopic.concat("flowrate/config");
   client.publish(flowRateTopic.c_str(), JSON.stringify(flowRatePayLoad).c_str());
 
 
+#if DEBUG
+  JSONVar xPayLoad;
+  xPayLoad["name"] = "X";
+  xPayLoad["unique_id"] = getUniqueId("x");
+  xPayLoad["state_topic"] = stateTopic;
+  xPayLoad["value_template"] = "{{ value_json.x }}";
+  xPayLoad["unit_of_measurement"] = "tesla";
+  xPayLoad["icon"] = "mdi:gauge";
+  xPayLoad["force_update"] = true;
+  xPayLoad["state_class"] = "measurement";
+  xPayLoad["availability_topic"] = availabilityTopic;
+  xPayLoad["device"] = device;   
+  xPayLoad["platform"] = "mqtt";
+  String xTopic = discoveryTopic; xTopic.concat("x/config");
+  client.publish(xTopic.c_str(), JSON.stringify(xPayLoad).c_str());
+ 
+  JSONVar yPayLoad;
+  yPayLoad["name"] = "Y";
+  yPayLoad["unique_id"] = getUniqueId("y");
+  yPayLoad["state_topic"] = stateTopic;
+  yPayLoad["value_template"] = "{{ value_json.y }}";
+  yPayLoad["unit_of_measurement"] = "tesla";
+  yPayLoad["icon"] = "mdi:gauge";
+  yPayLoad["force_update"] = true;
+  yPayLoad["state_class"] = "measurement";
+  yPayLoad["availability_topic"] = availabilityTopic;
+  yPayLoad["device"] = device;   
+  yPayLoad["platform"] = "mqtt";
+  String yTopic = discoveryTopic; yTopic.concat("y/config");
+  client.publish(yTopic.c_str(), JSON.stringify(yPayLoad).c_str());
+
+  JSONVar zPayLoad;
+  zPayLoad["name"] = "Z";
+  zPayLoad["unique_id"] = getUniqueId("z");
+  zPayLoad["state_topic"] = stateTopic;
+  zPayLoad["value_template"] = "{{ value_json.z }}";
+  zPayLoad["unit_of_measurement"] = "tesla";
+  zPayLoad["icon"] = "mdi:gauge";
+  zPayLoad["force_update"] = true;
+  zPayLoad["state_class"] = "measurement";
+  zPayLoad["availability_topic"] = availabilityTopic;
+  zPayLoad["device"] = device;   
+  zPayLoad["platform"] = "mqtt";
+  String zTopic = discoveryTopic; zTopic.concat("z/config");
+  client.publish(zTopic.c_str(), JSON.stringify(zPayLoad).c_str());
+#endif
 }
 
 void setup(void) {
@@ -260,7 +306,7 @@ void setup(void) {
 
 }
 
-void publish( long pulses ) {
+void publish( long pulses, sensors_vec_t magnetic ) {
   time_t now = millis();
   float ratePerMin = (totalPulses * ppg - previousVal) / (now - previousMillis) * 60 * 1000;
 
@@ -269,17 +315,25 @@ void publish( long pulses ) {
   payLoad["flowrate"] = String(ratePerMin,2);
   payLoad["rssi"] = WiFi.RSSI();
 
+#if DEBUG
+  payLoad["x"] = String(magnetic.x, 2);
+  payLoad["y"] = String(magnetic.y, 2);
+  payLoad["z"] = String(magnetic.z, 2);
+#endif
+
   client.publish(stateTopic.c_str(), JSON.stringify(payLoad).c_str());
   Serial.print("Gallons: "); Serial.println(totalPulses * ppg);
   previousMillis = now;
   previousVal = totalPulses * ppg;
-
-
 }
 
 void loop() {
   server.handleClient();
   ElegantOTA.loop();
+
+  lis3mdl.read();      // get X Y and Z data at once
+  sensors_event_t event; 
+  lis3mdl.getEvent(&event);
 
   loopCount = loopCount + 1;
   if ( loopCount % 25 == 0 ) {
@@ -288,23 +342,17 @@ void loop() {
     loopCount = 0;
     digitalWrite(LED_BUILTIN, LOW);
     client.publish(availabilityTopic.c_str(), "online");
-    publish(totalPulses);
+    publish(totalPulses, event.magnetic);
   }
-  lis3mdl.read();      // get X Y and Z data at once
 
-  /* Or....get a new sensor event, normalized to uTesla */
-  sensors_event_t event; 
-  lis3mdl.getEvent(&event);
-  /* Display the results (magnetic field is measured in uTesla) */
-  //Serial.print("\tX: "); Serial.print(event.magnetic.x);
-  //Serial.print(" \tY: "); Serial.print(event.magnetic.y); 
-  //Serial.print(" \tZ: "); Serial.print(event.magnetic.z); 
-  //Serial.print(" uTesla ");
+#if DEBUG
+    publish(totalPulses, event.magnetic);
+#endif
 
   // Zero cross
   if (!signbit(previousReading) != !signbit(event.magnetic.AXIS)) {
     totalPulses += 1;
-    publish(totalPulses);
+    publish(totalPulses, event.magnetic);
   
   }
   previousReading = event.magnetic.AXIS;
