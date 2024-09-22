@@ -16,7 +16,7 @@
 
 #define AXIS y
 
-#define DEBUG 0
+#define DEBUG 1
 
 
 
@@ -224,6 +224,21 @@ void autoConfig() {
   zPayLoad["platform"] = "mqtt";
   String zTopic = discoveryTopic; zTopic.concat("z/config");
   client.publish(zTopic.c_str(), JSON.stringify(zPayLoad).c_str());
+
+  JSONVar pulsesPayLoad;
+  pulsesPayLoad["name"] = "pulses";
+  pulsesPayLoad["unique_id"] = getUniqueId("pulses");
+  pulsesPayLoad["state_topic"] = stateTopic;
+  pulsesPayLoad["value_template"] = "{{ value_json.pulses }}";
+  pulsesPayLoad["unit_of_measurement"] = "tesla";
+  pulsesPayLoad["icon"] = "mdi:gauge";
+  pulsesPayLoad["force_update"] = true;
+  pulsesPayLoad["state_class"] = "measurement";
+  pulsesPayLoad["availability_topic"] = availabilityTopic;
+  pulsesPayLoad["device"] = device;   
+  pulsesPayLoad["platform"] = "mqtt";
+  String pulsesTopic = discoveryTopic; pulsesTopic.concat("pulese/config");
+  client.publish(pulsesTopic.c_str(), JSON.stringify(pulsesPayLoad).c_str());
 #endif
 }
 
@@ -306,7 +321,7 @@ void setup(void) {
 
 }
 
-void publish( long pulses, sensors_vec_t magnetic ) {
+void publish( sensors_vec_t magnetic ) {
   time_t now = millis();
   float ratePerMin = (totalPulses * ppg - previousVal) / (now - previousMillis) * 60 * 1000;
 
@@ -316,6 +331,7 @@ void publish( long pulses, sensors_vec_t magnetic ) {
   payLoad["rssi"] = WiFi.RSSI();
 
 #if DEBUG
+  payLoad["pulses"] = String(totalPulses);
   payLoad["x"] = String(magnetic.x, 2);
   payLoad["y"] = String(magnetic.y, 2);
   payLoad["z"] = String(magnetic.z, 2);
@@ -342,17 +358,17 @@ void loop() {
     loopCount = 0;
     digitalWrite(LED_BUILTIN, LOW);
     client.publish(availabilityTopic.c_str(), "online");
-    publish(totalPulses, event.magnetic);
+    publish(event.magnetic);
   }
 
 #if DEBUG
-    publish(totalPulses, event.magnetic);
+    publish(event.magnetic);
 #endif
 
   // Zero cross
   if (!signbit(previousReading) != !signbit(event.magnetic.AXIS)) {
     totalPulses += 1;
-    publish(totalPulses, event.magnetic);
+    publish(event.magnetic);
   
   }
   previousReading = event.magnetic.AXIS;
